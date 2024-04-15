@@ -1,0 +1,35 @@
+#!/usr/bin/env bash
+# Terminal archive explorer with selective extraction.
+
+if [ ! -f "$1" ]; then
+    echo "File not found: $1"
+    exit 1
+fi
+
+check_bin () {
+    if ! command -v $1 &> /dev/null; then
+        echo "Binary missing: $1" >&2
+        exit 1
+    fi
+}
+
+check_bin lsar
+check_bin unar
+check_bin fzf
+
+files=$(lsar -long -indexes $1 | \
+    fzf \
+        --multi \
+        --header-lines=3 \
+        --nth=8.. \
+        --reverse \
+        --preview="lsar $1 -i -L {1}" \
+        --preview-window hidden | \
+    awk '/[0-9]+/ {gsub(/.$/, "", $1); print $1}' \
+    )
+
+if [ -n "$files" ]; then
+    echo $files | xargs unar -copy-time -indexes $1
+else
+    echo "No files were extracted."
+fi
